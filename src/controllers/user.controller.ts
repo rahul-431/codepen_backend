@@ -46,9 +46,7 @@ export const registerUser = async (
     }
 
     // sending the response back to the user
-    res
-      .status(201)
-      .json(new ApiResponse(createdUser, "New User registered successfully"));
+    res.status(201).json("User registered successfully");
   } catch (error) {
     if (error instanceof ApiError) {
       res.status(400).json({ error: error.message });
@@ -61,17 +59,18 @@ export const getAllUsers = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const users = await User.find().select("-password");
-  if (!users) {
-    throw new ApiError("No users found", 404);
+  try {
+    const users = await User.find().select("-password -refreshToken");
+
+    res.status(200).json(users);
+  } catch (error) {
+    // Handle other errors
+    res.status(500).json({
+      error: "An error occurred while retrieving users",
+    });
   }
-  if (users.length > 0) {
-    res
-      .status(200)
-      .json(new ApiResponse(users, "All users retrived successfully"));
-  }
-  res.status(200).json(new ApiResponse(users, "No users found"));
 };
+
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
     //get user data
@@ -115,12 +114,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", refreshToken, options)
-      .json(
-        new ApiResponse(
-          { user: loggedInUser, token: { accessToken, refreshToken } },
-          "Logged in successfully"
-        )
-      );
+      .json({ user: loggedInUser, token: { accessToken, refreshToken } });
   } catch (error) {
     console.log("Failed to login: ", error);
     throw new Error("Failed to login");
@@ -136,6 +130,7 @@ export const generateAccessAndRefreshToken = async (userId: string) => {
 
     //save refresh token to database
     await user.save({ validateBeforeSave: false });
+    console.log(accessToken, refreshToken);
     return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError("something went wrong while creating jwt tokens", 500);
@@ -146,11 +141,11 @@ export const getCurrentUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const user = await User.findById(req.user?._id).select("-password");
+  const user = await User.findById(req.user?._id).select("-password -refreshToken");
   if (!user) {
     throw new ApiError("User not found", 404);
   }
-  res.json(new ApiResponse(user, "Here is the user data"));
+  res.json(user);
 };
 //logout user
 export const logout = async (req: Request, res: Response): Promise<void> => {
@@ -172,7 +167,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new ApiResponse("User Logged out successfully"));
+    .json(new ApiResponse({}, "User Logged out successfully"));
 };
 export const refreshAccessToken = async (
   req: Request,

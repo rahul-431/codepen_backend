@@ -26,7 +26,7 @@ userRouter.route("/login").post(loginUser);
 
 //get list of all users
 // userRouter.route("/").get(verifyJwt, getAllUsers);
-userRouter.route("/getCurrent").get(verifyJwt, getCurrentUser);
+userRouter.route("/getCurrentUser").get(verifyJwt, getCurrentUser);
 
 //delete user
 userRouter.route("/:id").delete(verifyJwt, deleteUser);
