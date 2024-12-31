@@ -13,7 +13,25 @@ const userSchema = new Schema({
       ref: "Pen",
     },
   ],
+  collections: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Collection",
+    },
+  ],
   refreshToken: String,
+  followers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  followings: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
 });
 
 //predefined middleware

@@ -1,13 +1,15 @@
 import mongoose, { Schema } from "mongoose";
 
-const penSchema = new Schema(
+const collectionSchema = new Schema(
   {
-    title: String,
-    code: {
-      html: String,
-      css: String,
-      js: String,
-    },
+    title: { type: String },
+    description: String,
+    pens: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Pen",
+      },
+    ],
     author: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -40,5 +42,7 @@ const penSchema = new Schema(
   },
   { timestamps: true }
 );
-const Pen = mongoose.models.Pen || mongoose.model("Pen", penSchema);
-export default Pen;
+const Collection =
+  mongoose.models.Collection || mongoose.model("Collection", collectionSchema);
+
+export default Collection;

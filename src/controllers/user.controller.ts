@@ -1,9 +1,11 @@
+import Pen from "@models/pen.model";
 import User from "@models/user.model";
 import { ApiError } from "@utils/ApiError";
 import { ApiResponse } from "@utils/ApiResponse";
 import { Request, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import mongoose from "mongoose";
+import Collection from "@models/collection.model";
 interface RegisterProp {
   name: string;
   email: string;
@@ -141,7 +143,9 @@ export const getCurrentUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const user = await User.findById(req.user?._id).select("-password -refreshToken");
+  const user = await User.findById(req.user?._id).select(
+    "-password -refreshToken"
+  );
   if (!user) {
     throw new ApiError("User not found", 404);
   }
