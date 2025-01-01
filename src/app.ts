@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import userRouter from "@routes/user.route";
 import penRouter from "@routes/pen.route";
+import collectionRouter from "@routes/collection.route";
 dotenv.config();
 
 const app: Express = express();
@@ -23,4 +24,7 @@ app.use("/api/v1/users", userRouter);
 
 //pen routes
 app.use("/api/v1/pens", penRouter);
+
+//collection routes
+app.use("/api/v1/collections", collectionRouter);
 export default app;

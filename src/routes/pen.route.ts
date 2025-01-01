@@ -4,6 +4,7 @@ import {
   getAllPens,
   getCurrentPen,
   getUserPens,
+  makePenPrivate,
   updatePen,
 } from "@controllers/pen.controller";
 import { verifyJwt } from "@middlewares/auth.middlware";
@@ -14,7 +15,9 @@ const penRouter = Router();
 //create new pen
 penRouter.route("/").post(verifyJwt, createNewPen);
 
+//get all pens of current user
 penRouter.route("/get").get(verifyJwt, getUserPens);
+
 //get all pens
 penRouter.route("/").get(verifyJwt, getAllPens);
 
@@ -27,7 +30,7 @@ penRouter.route("/:id").delete(verifyJwt, deletePen);
 //getCurrentPen
 penRouter.route("/:id").get(verifyJwt, getCurrentPen);
 
-//get all pens of current user
-
+//update type
+penRouter.route("/:id").post(verifyJwt, makePenPrivate);
 
 export default penRouter;

@@ -237,3 +237,35 @@ export const updatePen = async (req: Request, res: Response) => {
     });
   }
 };
+export const makePenPrivate = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const { value } = req.body;
+    if (!value) {
+      throw new ApiError("No type value provided", 404);
+    }
+    const updatedPen = await Pen.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          type: value,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedPen) {
+      throw new ApiError("Failed to update the pen", 400);
+    }
+    res.status(200).json(updatedPen);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update pen",
+      error: error,
+    });
+  }
+};
