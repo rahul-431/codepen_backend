@@ -12,6 +12,10 @@ const penSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
     type: {
       type: String,
       enum: ["public", "private"],

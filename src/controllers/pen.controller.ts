@@ -54,7 +54,7 @@ export const createNewPen = async (req: Request, res: Response) => {
 };
 export const getAllPens = async (req: Request, res: Response) => {
   try {
-    const pens = await Pen.find()
+    const pens = await Pen.find({ type: "public", deleted: false })
       .populate({
         path: "author",
         model: User,
@@ -76,7 +76,7 @@ export const getUserPens = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
     if (!userId) throw new ApiError("Invalid user id", 404);
-    const pens = await Pen.find({ author: userId }).sort({
+    const pens = await Pen.find({ author: userId, deleted: false }).sort({
       updatedAt: "desc",
     });
     res.status(200).json(pens);
@@ -89,77 +89,85 @@ export const getUserPens = async (req: Request, res: Response) => {
   }
 };
 
-//this is for future improvement
+// delete pen temporarily
+export const deletePenTemp = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const updatedPen = await Pen.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          deleted: true,
+        },
+      },
+      { new: true }
+    );
 
-// export const getAllPens = async (req: Request, res: Response) => {
-//   try {
-//     const page = parseInt(req.query.page as string, 10) || 1;
-//     const search = req.query.search?.toString() || "";
-//     const filter = req.query.filter?.toString() || "all";
+    if (!updatedPen) {
+      throw new ApiError("Failed to delete temporarily", 400);
+    }
+    res.status(200).json(updatedPen);
+  } catch (error) {
+    res.status(500).json({
+      message: "Temporary pen delete failed",
+      error: error,
+    });
+  }
+};
 
-//     // Calculate the number of posts to skip (pagination)
-//     const skipAmount = Math.max(0, (page - 1) * 20);
+//restore temporary deleted pens
+export const restorePen = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const updatedPen = await Pen.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          deleted: false,
+        },
+      },
+      { new: true }
+    );
 
-//     // Filter and search logic
-//     let filterQuery = filter !== "all" ? { someField: filter } : {};
-//     const searchQuery = search
-//       ? {
-//           $or: [
-//             { title: { $regex: search, $options: "i" } },
-//             { description: { $regex: search, $options: "i" } },
-//           ],
-//         }
-//       : {};
+    if (!updatedPen) {
+      throw new ApiError("Failed to restore pen", 400);
+    }
+    res.status(200).json(updatedPen);
+  } catch (error) {
+    res.status(500).json({
+      message: "Pen restoration failed",
+      error: error,
+    });
+  }
+};
 
-//     // Combined query
-//     const query = Pen.find({ ...filterQuery, ...searchQuery })
-//       .populate({
-//         path: "type",
-//         match: filterQuery,
-//       })
-//       .populate({
-//         path: "author",
-//         model: User,
-//         select: "_id name picture",
-//       })
-//       .populate({
-//         path: "likes",
-//         model: User,
-//       })
-//       .populate({
-//         path: "comments",
-//         populate: {
-//           path: "commentBy",
-//           model: User,
-//         },
-//       })
-//       .populate({
-//         path: "views",
-//         model: User,
-//       })
-//       .sort({
-//         updatedAt: "desc",
-//       })
-//       .skip(skipAmount)
-//       .limit(20);
+// get temporary deleted pens
+export const getTempDeletedPens = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError("Invalid user id", 404);
+    const pens = await Pen.find({ author: userId, deleted: true }).sort({
+      updatedAt: "desc",
+    });
+    res.status(200).json(pens);
+  } catch (error) {
+    // Handle other errors
+    res.status(500).json({
+      message: "Something is wrong",
+      error: error,
+    });
+  }
+};
 
-//     // Count total documents matching the query
-//     const countPens = await Pen.countDocuments({
-//       ...filterQuery,
-//       ...searchQuery,
-//     });
-//     const pens = await query.exec();
-
-//     res.status(200).json({ pens, countPens });
-//   } catch (error: any) {
-//     console.error("Error fetching pens:", error);
-//     res.status(500).json({
-//       message: "An error occurred while retrieving pens",
-//       error: error?.message || error,
-//     });
-//   }
-// };
-
+//permanently deleting pen
 export const deletePen = async (req: Request, res: Response) => {
   try {
     const deleteId = req.params.id;
@@ -167,10 +175,18 @@ export const deletePen = async (req: Request, res: Response) => {
       throw new ApiError("No id provided", 400);
     }
     const deleteObjectId = new mongoose.Types.ObjectId(deleteId);
+
     const deletedPen = await Pen.findByIdAndDelete(deleteObjectId);
     if (!deletedPen) {
       throw new ApiError("Pen not found", 400);
     }
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $pull: { pens: deleteId }, // Remove the pen ID from the pens array
+      },
+      { new: true }
+    );
     res.status(204).json({ message: "Pen deleted successfully" });
   } catch (error) {
     res.status(500).json({
@@ -215,8 +231,8 @@ export const updatePen = async (req: Request, res: Response) => {
       updateObjectId,
       {
         $set: {
+          title: title,
           code: {
-            title: title,
             html: html,
             css: css,
             js: js,

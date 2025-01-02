@@ -19,6 +19,10 @@ const collectionSchema = new Schema(
       enum: ["public", "private"],
       default: "public",
     },
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
     stats: {
       likes: [
         {
@@ -40,6 +44,7 @@ const collectionSchema = new Schema(
       ],
     },
   },
+
   { timestamps: true }
 );
 const Collection =

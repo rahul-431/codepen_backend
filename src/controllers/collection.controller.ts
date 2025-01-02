@@ -1,4 +1,5 @@
 import Collection from "@models/collection.model";
+import Pen from "@models/pen.model";
 import User from "@models/user.model";
 import { ApiError } from "@utils/ApiError";
 import { Request, Response } from "express";
@@ -49,7 +50,10 @@ export const createNewCollection = async (req: Request, res: Response) => {
 };
 export const getAllCollections = async (req: Request, res: Response) => {
   try {
-    const collections = await Collection.find()
+    const collections = await Collection.find({
+      type: "public",
+      deleted: false,
+    })
       .populate({
         path: "author",
         model: User,
@@ -72,7 +76,10 @@ export const getUserCollection = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
     if (!userId) throw new ApiError("Invalid user id", 404);
-    const collections = await Collection.find({ author: userId }).sort({
+    const collections = await Collection.find({
+      author: userId,
+      deleted: false,
+    }).sort({
       updatedAt: "desc",
     });
     res.status(200).json(collections);
@@ -84,6 +91,85 @@ export const getUserCollection = async (req: Request, res: Response) => {
     });
   }
 };
+export const getTempDeltedCollection = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError("Invalid user id", 404);
+    const collections = await Collection.find({
+      author: userId,
+      deleted: true,
+    }).sort({
+      updatedAt: "desc",
+    });
+    console.log("delted collections:", collections);
+    res.status(200).json(collections);
+  } catch (error) {
+    // Handle other errors
+    res.status(500).json({
+      message: "Something is wrong",
+      error: error,
+    });
+  }
+};
+//temporarily deleting collection
+export const deleteCollectionTemp = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const updatedCollection = await Collection.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          deleted: true,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedCollection) {
+      throw new ApiError("Failed to delete collection temporarily", 400);
+    }
+    res.status(200).json(updatedCollection);
+  } catch (error) {
+    res.status(500).json({
+      message: "Temporary collection delete failed",
+      error: error,
+    });
+  }
+};
+//Restore collection
+export const restoreCollection = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const updatedCollection = await Collection.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          deleted: false,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedCollection) {
+      throw new ApiError("Failed to restore collection", 400);
+    }
+    res.status(200).json(updatedCollection);
+  } catch (error) {
+    res.status(500).json({
+      message: "Collection restoration failed",
+      error: error,
+    });
+  }
+};
+//deleting collection permanently
 export const deleteCollection = async (req: Request, res: Response) => {
   try {
     const deleteId = req.params.id;
@@ -95,6 +181,14 @@ export const deleteCollection = async (req: Request, res: Response) => {
     if (!deletedPen) {
       throw new ApiError("Collection not found", 400);
     }
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $pull: { pens: deleteId }, // Remove the pen ID from the pens array
+      },
+      { new: true }
+    );
+
     res.status(204).json({ message: "Collection deleted successfully" });
   } catch (error) {
     res.status(500).json({
@@ -110,7 +204,15 @@ export const getCurrentCollection = async (req: Request, res: Response) => {
       throw new ApiError("No id provided", 400);
     }
     const idObj = new mongoose.Types.ObjectId(id);
-    const collection = await Collection.findById(idObj);
+    const collection = await Collection.findById(idObj)
+      .populate({
+        path: "author",
+        model: User,
+      })
+      .populate({
+        path: "pens",
+        model: Pen,
+      });
     if (!collection) {
       throw new ApiError("collection not found", 400);
     }
@@ -150,6 +252,41 @@ export const makeCollectionPrivate = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({
       message: "Failed to update collection",
+      error: error,
+    });
+  }
+};
+export const updateCollection = async (req: Request, res: Response) => {
+  try {
+    const updateId = req.params.id;
+    if (!updateId) {
+      throw new ApiError("No id provided", 400);
+    }
+    const updateObjectId = new mongoose.Types.ObjectId(updateId);
+    const { title, description } = req.body;
+
+    //empty validation
+    if (!title) {
+      throw new ApiError("Title is required");
+    }
+    const updatedCollection = await Collection.findByIdAndUpdate(
+      updateObjectId,
+      {
+        $set: {
+          title: title,
+          description: description,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedCollection) {
+      throw new ApiError("Failed to update the Collection", 400);
+    }
+    res.status(200).json(updatedCollection);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update Collection",
       error: error,
     });
   }
