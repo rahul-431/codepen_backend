@@ -1,6 +1,6 @@
 import { connectDB } from "@db/connection";
 import dotenv from "dotenv";
-import app from "./app";
+import app from "../app";
 
 dotenv.config({
   path: "./.env",
